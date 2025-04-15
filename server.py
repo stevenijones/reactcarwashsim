@@ -16,11 +16,19 @@ def favicon():
 @app.route('/run-simulation', methods=['POST'])
 def run_simulation():
     try:
-        # Run the car_wash_simulation.py script
-        result = subprocess.run(['python', 'car_wash_simulation.py'], capture_output=True, text=True)
+        # Run the car_wash_simulation.py script and capture metrics
+        from car_wash_simulation import run_simulation_with_data
+        _, _, _, longest_wait, average_wait, total_reneged = run_simulation_with_data(
+            run_length=500, num_systems=2, max_queue_length=5, arrival_rate=0.6
+        )
+
         return jsonify({
             'success': True,
-            'output': result.stdout
+            'metrics': {
+                'reneged_cars': total_reneged,
+                'avg_wait_time': average_wait,
+                'longest_wait_time': longest_wait
+            }
         })
     except Exception as e:
         return jsonify({

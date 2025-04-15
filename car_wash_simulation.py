@@ -1,119 +1,96 @@
 import simpy
 import random
-import matplotlib.pyplot as plt  # Add this import for plotting
 
-def car(env, name, wash_station, dry_station, wax_station, wash_to_dry_queue, dry_to_wax_queue, stats):
-    """A car process that goes through wash, dry, and wax."""
-    print(f'{name} arrives at the car wash at {env.now:.2f}')
-    
-    # Wash step
-    with wash_station.request() as request:
-        stats['wash_queue'].append((env.now, len(wash_station.queue)))
-        stats['wash_active'].append((env.now, len(wash_station.users)))
+def car(env, name, car_wash, drying, waxing, wait_times):
+    """Car process that goes through wash, dry, and wax steps."""
+    print(f"{name} arriving at car wash at {env.now}")
+    arrival_time = env.now
+
+    with car_wash.request() as request:
         yield request
-        print(f'{name} enters the wash station at {env.now:.2f}')
+        #print(f"{name} entering car wash at {env.now}")
+        wait_time = env.now - arrival_time
+        wait_times.append(wait_time)
         yield env.timeout(random.uniform(5, 10))  # Washing takes 5-10 minutes
-        print(f'{name} leaves the wash station at {env.now:.2f}')
-    
-    # Move to dry queue
-    yield wash_to_dry_queue.put(name)
-    print(f'{name} enters the wash-to-dry queue at {env.now:.2f}')
-    yield wash_to_dry_queue.get()
-    
-    # Dry step
-    with dry_station.request() as request:
-        stats['dry_queue'].append((env.now, len(dry_station.queue)))
-        stats['dry_active'].append((env.now, len(dry_station.users)))
+        #print(f"{name} leaving car wash at {env.now}")
+
+    with drying.request() as request:
         yield request
-        print(f'{name} enters the dry station at {env.now:.2f}')
+        #print(f"{name} entering drying at {env.now}")
         yield env.timeout(random.uniform(3, 7))  # Drying takes 3-7 minutes
-        print(f'{name} leaves the dry station at {env.now:.2f}')
-    
-    # Move to wax queue
-    yield dry_to_wax_queue.put(name)
-    print(f'{name} enters the dry-to-wax queue at {env.now:.2f}')
-    yield dry_to_wax_queue.get()
-    
-    # Wax step
-    with wax_station.request() as request:
-        stats['wax_queue'].append((env.now, len(wax_station.queue)))
-        stats['wax_active'].append((env.now, len(wax_station.users)))
+        #print(f"{name} leaving drying at {env.now}")
+
+    with waxing.request() as request:
         yield request
-        print(f'{name} enters the wax station at {env.now:.2f}')
+        #print(f"{name} entering waxing at {env.now}")
         yield env.timeout(random.uniform(4, 8))  # Waxing takes 4-8 minutes
-        print(f'{name} leaves the wax station at {env.now:.2f}')
+        print(f"{name} leaving waxing at {env.now}")
 
-def setup(env, num_washers, num_dryers, num_waxers, arrival_rate, stats):
-    """Set up the car wash simulation."""
-    wash_station = simpy.Resource(env, num_washers)
-    dry_station = simpy.Resource(env, num_dryers)
-    wax_station = simpy.Resource(env, num_waxers)
-    
-    # Limited queues between processes
-    wash_to_dry_queue = simpy.Store(env, capacity=1)
-    dry_to_wax_queue = simpy.Store(env, capacity=1)
-    
-    # Generate cars
-    car_id = 0
+def car_generator(env, car_wash, drying, waxing, arrival_rate, max_queue_length, queue_data, car_wash_data, lost_cars, wait_times):
+    """Generates cars arriving at the car wash and collects data."""
+    car_count = 0
     while True:
-        yield env.timeout(random.expovariate(arrival_rate))  # Cars arrive randomly
-        car_id += 1
-        env.process(car(env, f'Car {car_id}', wash_station, dry_station, wax_station, wash_to_dry_queue, dry_to_wax_queue, stats))
+        if len(car_wash.queue) < max_queue_length:
+            car_count += 1
+            env.process(car(env, f"Car {car_count}", car_wash, drying, waxing, wait_times))
+        else:
+            lost_cars.append(env.now)  # Record the time when a car is lost
+            print(f"Car lost at {env.now} due to queue limit")
+        yield env.timeout(random.expovariate(arrival_rate))
 
-def plot_stats(stats):
-    """Plot the collected statistics."""
-    plt.figure(figsize=(12, 8))
-    
-    # Plot wash station stats
-    times, queue_lengths = zip(*stats['wash_queue'])
-    plt.plot(times, queue_lengths, label='Wash Queue Length')
-    times, active_counts = zip(*stats['wash_active'])
-    plt.plot(times, active_counts, label='Wash Active Processes')
-    
-    # Plot dry station stats
-    times, queue_lengths = zip(*stats['dry_queue'])
-    plt.plot(times, queue_lengths, label='Dry Queue Length')
-    times, active_counts = zip(*stats['dry_active'])
-    plt.plot(times, active_counts, label='Dry Active Processes')
-    
-    # Plot wax station stats
-    times, queue_lengths = zip(*stats['wax_queue'])
-    plt.plot(times, queue_lengths, label='Wax Queue Length')
-    times, active_counts = zip(*stats['wax_active'])
-    plt.plot(times, active_counts, label='Wax Active Processes')
-    
-    plt.xlabel('Time (minutes)')
-    plt.ylabel('Count')
-    plt.title('Car Wash Simulation Statistics')
-    plt.legend()
-    plt.grid()
-    plt.show()
+def validate_inputs(run_length, num_systems, max_queue_length, arrival_rate):
+    if run_length <= 0:
+        raise ValueError("Run length must be greater than 0.")
+    if num_systems <= 0:
+        raise ValueError("Number of systems must be greater than 0.")
+    if max_queue_length <= 0:
+        raise ValueError("Max queue length must be greater than 0.")
+    if arrival_rate <= 0:
+        raise ValueError("Arrival rate must be greater than 0.")
 
-# Initialize the simulation environment
-random.seed(42)  # For reproducibility
-env = simpy.Environment()
+def record_state(env, car_wash, queue_data, car_wash_data, lost_cars_data, lost_cars, run_length):
+    """Records the state of the system at regular intervals."""
+    last_recorded_time = 0
+    while env.now < run_length:
+        queue_data.append(len(car_wash.queue))
+        car_wash_data.append(len(car_wash.users))
 
-# Parameters
-num_washers = 2
-num_dryers = 2
-num_waxers = 1
-arrival_rate = 2 / 3  # Average of 1 car every 3 minutes
+        # Count lost cars only for the current time step
+        lost_cars_in_step = len([t for t in lost_cars if last_recorded_time < t <= env.now])
+        lost_cars_data.append(lost_cars_in_step)
+        print(f"Time: {env.now}, Queue Length: {len(car_wash.queue)}, Cars in Wash: {len(car_wash.users)}, Lost Cars: {lost_cars_in_step}")
 
-# Statistics collection
-stats = {
-    'wash_queue': [],
-    'wash_active': [],
-    'dry_queue': [],
-    'dry_active': [],
-    'wax_queue': [],
-    'wax_active': []
-}
+        last_recorded_time = env.now
+        yield env.timeout(1)  # Record data every minute
 
-# Start the setup process
-env.process(setup(env, num_washers, num_dryers, num_waxers, arrival_rate, stats))
+def run_simulation_with_data(run_length, num_systems, max_queue_length, arrival_rate):
+    """Run the car wash simulation and collect data."""
+    validate_inputs(run_length, num_systems, max_queue_length, arrival_rate)
 
-# Run the simulation for 240 minutes
-env.run(until=240)
+    env = simpy.Environment()
+    car_wash = simpy.Resource(env, capacity=num_systems)
+    drying = simpy.Resource(env, capacity=num_systems)
+    waxing = simpy.Resource(env, capacity=num_systems)
 
-# Plot the results
-plot_stats(stats)
+    queue_data = []
+    car_wash_data = []
+    lost_cars = []
+    lost_cars_data = []
+    wait_times = []
+
+    env.process(car_generator(env, car_wash, drying, waxing, arrival_rate, max_queue_length, queue_data, car_wash_data, lost_cars, wait_times))
+    print("Starting simulation...")
+    env.process(record_state(env, car_wash, queue_data, car_wash_data, lost_cars_data, lost_cars, run_length))
+    print("Simulation in progress...")
+    env.run(until=run_length)
+    print("Simulation complete.")
+
+    # Calculate metrics
+    longest_wait = max(wait_times) if wait_times else 0
+    average_wait = sum(wait_times) / len(wait_times) if wait_times else 0
+    total_reneged = len(lost_cars)
+
+    return queue_data, car_wash_data, lost_cars_data, longest_wait, average_wait, total_reneged
+
+if __name__ == "__main__":
+    run_simulation_with_data(run_length=500, num_systems=2, max_queue_length=5, arrival_rate=0.6)
