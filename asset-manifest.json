@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/reactcarwashsim/static/css/main.47a4cb06.css",
+    "main.js": "/reactcarwashsim/static/js/main.889e3683.js",
+    "static/js/453.85970eb1.chunk.js": "/reactcarwashsim/static/js/453.85970eb1.chunk.js",
+    "index.html": "/reactcarwashsim/index.html",
+    "main.47a4cb06.css.map": "/reactcarwashsim/static/css/main.47a4cb06.css.map",
+    "main.889e3683.js.map": "/reactcarwashsim/static/js/main.889e3683.js.map",
+    "453.85970eb1.chunk.js.map": "/reactcarwashsim/static/js/453.85970eb1.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.47a4cb06.css",
+    "static/js/main.889e3683.js"
+  ]
+}
