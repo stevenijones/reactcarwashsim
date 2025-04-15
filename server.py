@@ -28,7 +28,7 @@ def run_simulation():
 
         # Run the car_wash_simulation.py script and capture metrics
         from car_wash_simulation import run_simulation_with_data
-        _, _, _, longest_wait, average_wait, total_reneged = run_simulation_with_data(
+        queue_data, car_wash_data, lost_cars_data, longest_wait, average_wait, total_reneged = run_simulation_with_data(
             run_length=run_length, num_systems=num_systems, max_queue_length=max_queue_length, arrival_rate=arrival_rate
         )
 
@@ -40,6 +40,11 @@ def run_simulation():
         )
 
         # Log the response for debugging
+        # Format detailed data for frontend compatibility
+        formatted_queue_data = [{'time': i, 'value': v} for i, v in enumerate(queue_data)]
+        formatted_car_wash_data = [{'time': i, 'value': v} for i, v in enumerate(car_wash_data)]
+        formatted_lost_cars_data = [{'time': i, 'value': v} for i, v in enumerate(lost_cars_data)]
+
         response = {
             'success': True,
             'output': output,
@@ -47,6 +52,11 @@ def run_simulation():
                 'reneged_cars': total_reneged,
                 'avg_wait_time': average_wait,
                 'longest_wait_time': longest_wait
+            },
+            'detailed_data': {
+                'queue_data': formatted_queue_data,
+                'car_wash_data': formatted_car_wash_data,
+                'lost_cars_data': formatted_lost_cars_data
             }
         }
         print(f"Response: {response}")
