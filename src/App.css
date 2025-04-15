@@ -27,6 +27,26 @@
   line-height: 1.5;
 }
 
+.parameters {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.parameter-row {
+  margin: 0.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  width: 300px;
+}
+
+.parameter-row label {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .run-button {
   background-color: #61dafb;
   border: none;
@@ -40,4 +60,9 @@
 
 .run-button:hover {
   background-color: #21a1f1;
+}
+
+.metrics {
+  margin-top: 1rem;
+  text-align: center;
 }
